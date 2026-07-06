@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginScreen() {
@@ -72,6 +72,13 @@ export default function LoginScreen() {
           <Text className="text-lg font-bold text-zinc-950">Sign In</Text>
         )}
       </Pressable>
+
+      <View className="flex-row justify-center gap-1.5">
+        <Text className="text-sm text-zinc-500">New to Titan Metrics?</Text>
+        <Link href="/(auth)/signup" className="text-sm font-semibold text-amber-400">
+          Create account
+        </Link>
+      </View>
     </View>
   );
 }
