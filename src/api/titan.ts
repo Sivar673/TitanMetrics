@@ -47,6 +47,15 @@ export async function login(email: string, password: string): Promise<LoginRespo
   return data;
 }
 
+export async function fetchMe(): Promise<LoginResponse['user']> {
+  if (USE_MOCKS) {
+    await delay();
+    return { id: 'c_1', email: 'marcus@example.com', display_name: 'Marcus T.', role: 'client' };
+  }
+  const { data } = await api.get<LoginResponse['user']>(ENDPOINTS.me);
+  return data;
+}
+
 export async function fetchClients(): Promise<ClientSummary[]> {
   if (USE_MOCKS) {
     await delay();

@@ -1,9 +1,13 @@
 import { Redirect, Stack } from 'expo-router';
+import { Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
+import { LoadingState } from '@/components/ui/QueryStates';
 
 export default function CoachStackLayout() {
-  const { user } = useAuth();
+  const { user, isLoading, signOut } = useAuth();
 
+  if (isLoading) return <LoadingState />;
   if (!user) return <Redirect href="/(auth)/login" />;
   if (user.role !== 'coach') return <Redirect href="/(client)/dashboard" />;
 
@@ -13,6 +17,11 @@ export default function CoachStackLayout() {
         headerStyle: { backgroundColor: '#09090b' },
         headerTintColor: '#fafafa',
         contentStyle: { backgroundColor: '#09090b' },
+        headerRight: () => (
+          <Pressable onPress={signOut} hitSlop={12}>
+            <Ionicons name="log-out-outline" color="#71717a" size={22} />
+          </Pressable>
+        ),
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Client Roster' }} />
