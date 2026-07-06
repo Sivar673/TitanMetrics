@@ -1,6 +1,12 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CoachStackLayout() {
+  const { user } = useAuth();
+
+  if (!user) return <Redirect href="/(auth)/login" />;
+  if (user.role !== 'coach') return <Redirect href="/(client)/dashboard" />;
+
   return (
     <Stack
       screenOptions={{
