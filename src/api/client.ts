@@ -6,10 +6,12 @@ import axios from 'axios';
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? null;
 export const USE_MOCKS = API_URL === null;
 
+// No default Content-Type: axios infers application/json for object
+// payloads and multipart/form-data (with boundary) for FormData — a fixed
+// default would clobber the multipart boundary on file uploads.
 export const api = axios.create({
   baseURL: API_URL ?? 'http://localhost:8000',
   timeout: 10_000,
-  headers: { 'Content-Type': 'application/json' },
 });
 
 let authToken: string | null = null;
@@ -40,10 +42,18 @@ api.interceptors.response.use(
   (error: unknown) => {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status ?? null;
-      // FastAPI puts human-readable errors in `detail`
+      // FastAPI puts human-readable errors in `detail` — a string for
+      // HTTPException, a list of {msg, loc} objects for 422 validation.
       const data = error.response?.data as { detail?: unknown } | undefined;
-      const detail =
-        typeof data?.detail === 'string' ? data.detail : error.message;
+      let detail = error.message;
+      if (typeof data?.detail === 'string') {
+        detail = data.detail;
+      } else if (Array.isArray(data?.detail)) {
+        detail = data.detail
+          .map((item) => (item as { msg?: string })?.msg)
+          .filter(Boolean)
+          .join('; ');
+      }
       return Promise.reject(new ApiError(detail, status));
     }
     return Promise.reject(error);

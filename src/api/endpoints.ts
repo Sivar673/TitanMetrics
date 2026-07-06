@@ -6,4 +6,5 @@ export const ENDPOINTS = {
   coachClients: '/coach/clients',
   clientReport: (clientId: string) => `/clients/${clientId}/report`,
   clientProgression: (clientId: string) => `/clients/${clientId}/progression`,
+  physiqueEvaluation: '/ai/physique-evaluation',
 } as const;

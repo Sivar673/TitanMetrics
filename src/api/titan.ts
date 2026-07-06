@@ -4,12 +4,16 @@
 import { api, USE_MOCKS } from './client';
 import { ENDPOINTS } from './endpoints';
 import { MOCK_CLIENTS, delay, mockCreated, mockProgression, mockReport } from './mocks';
+import { Platform } from 'react-native';
 import type {
   CheckInPayload,
   ClientReportResponse,
   ClientSummaryResponse,
   CreatedResponse,
   LoginResponse,
+  PhysiqueEvaluationResponse,
+  PoseImage,
+  PoseName,
   ProgressionResponse,
   WorkoutSessionPayload,
 } from '@/types/api';
@@ -90,6 +94,59 @@ export async function submitCheckIn(payload: CheckInPayload): Promise<CreatedRes
     return mockCreated();
   }
   const { data } = await api.post<CreatedResponse>(ENDPOINTS.checkIns, payload);
+  return data;
+}
+
+// On web, picker URIs are blob:/data: URLs that must be fetched into a Blob;
+// on native, FormData takes a {uri, name, type} file descriptor.
+async function appendPose(form: FormData, pose: PoseName, image: PoseImage): Promise<void> {
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(image.uri)).blob();
+    form.append(pose, blob, image.fileName);
+    return;
+  }
+  form.append(pose, {
+    uri: image.uri,
+    name: image.fileName,
+    type: image.mimeType,
+  } as unknown as Blob);
+}
+
+export async function evaluatePhysique(
+  images: Record<PoseName, PoseImage>,
+): Promise<PhysiqueEvaluationResponse> {
+  if (USE_MOCKS) {
+    await delay(2500); // vision models are slow; make the mock honest
+    return {
+      is_valid_submission: true,
+      validity_notes: null,
+      overall_score: 7,
+      strengths: [
+        'Strong shoulder-to-waist ratio with visible lat flare framing the taper',
+        'Round side-delt caps that hold shape in the front pose',
+      ],
+      weaknesses: [
+        'Rear delts and upper back lose separation in the back pose',
+        'Slight front-to-back imbalance — chest development leads the back',
+      ],
+      training_adjustments: [
+        'Add 3 weekly sets of reverse pec-deck or rear-delt fly to bring up the rear delts',
+        'Move one back day to a chest-supported row focus, 4 sets of 8-10, to thicken the mid-back',
+      ],
+    };
+  }
+
+  const form = new FormData();
+  await appendPose(form, 'front', images.front);
+  await appendPose(form, 'side', images.side);
+  await appendPose(form, 'back', images.back);
+
+  const { data } = await api.post<PhysiqueEvaluationResponse>(
+    ENDPOINTS.physiqueEvaluation,
+    form,
+    // Vision evaluation takes 15-60s — well past the client default timeout
+    { timeout: 120_000 },
+  );
   return data;
 }
 

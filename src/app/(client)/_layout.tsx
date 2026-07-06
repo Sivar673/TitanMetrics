@@ -57,6 +57,15 @@ export default function ClientTabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="ai-coach"
+        options={{
+          title: 'AI Coach',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles" color={color} size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
