@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# local env (EXPO_PUBLIC_* only, but keep machine-specific URLs out of git)
+.env
