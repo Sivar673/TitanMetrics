@@ -1,11 +1,16 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { evaluatePhysique } from '@/api/titan';
+import { queryKeys } from '@/api/queryKeys';
 import type { PoseImage, PoseName } from '@/types/api';
 
 export function useEvaluatePhysique() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (images: Record<PoseName, PoseImage>) => evaluatePhysique(images),
-    // Stateless feature: nothing cached to invalidate. If evaluations get
-    // persisted server-side later, invalidate that history query here.
+    onSuccess: () => {
+      // The new evaluation is now part of the persisted history
+      queryClient.invalidateQueries({ queryKey: queryKeys.evaluationHistory });
+    },
   });
 }

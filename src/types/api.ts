@@ -128,6 +128,11 @@ export interface PhysiqueEvaluationResponse {
   training_adjustments: string[];
 }
 
+export interface EvaluationHistoryItem extends PhysiqueEvaluationResponse {
+  id: number;
+  created_at: string; // ISO 8601 UTC
+}
+
 // ---- Auth ----
 
 export interface LoginResponse {

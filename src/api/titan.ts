@@ -10,6 +10,7 @@ import type {
   ClientReportResponse,
   ClientSummaryResponse,
   CreatedResponse,
+  EvaluationHistoryItem,
   LoginResponse,
   PhysiqueEvaluationResponse,
   PoseImage,
@@ -147,6 +148,26 @@ export async function evaluatePhysique(
     // Vision evaluation takes 15-60s — well past the client default timeout
     { timeout: 120_000 },
   );
+  return data;
+}
+
+export async function fetchEvaluationHistory(): Promise<EvaluationHistoryItem[]> {
+  if (USE_MOCKS) {
+    await delay();
+    const weeksAgoIso = (n: number) =>
+      new Date(Date.now() - n * 7 * 86_400_000).toISOString();
+    return [10, 8, 6, 4, 2].map((weeksAgo, i) => ({
+      id: i + 1,
+      created_at: weeksAgoIso(weeksAgo),
+      is_valid_submission: true,
+      validity_notes: null,
+      overall_score: 5 + i * 0.5,
+      strengths: ['Strong shoulder-to-waist ratio'],
+      weaknesses: ['Rear delts lag the front delts'],
+      training_adjustments: ['Add 3 weekly sets of reverse pec-deck'],
+    })).reverse(); // newest first, matching the API
+  }
+  const { data } = await api.get<EvaluationHistoryItem[]>(ENDPOINTS.evaluationHistory);
   return data;
 }
 

@@ -10,6 +10,9 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useEvaluatePhysique } from '@/hooks/useEvaluatePhysique';
+import { FeedbackList } from '@/components/ai/FeedbackList';
+import { EvaluationHistoryView } from '@/components/ai/EvaluationHistoryView';
+import { ApiError } from '@/api/client';
 import type { PhysiqueEvaluationResponse, PoseImage, PoseName } from '@/types/api';
 
 const POSES: { key: PoseName; label: string; hint: string }[] = [
@@ -74,33 +77,6 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
-function FeedbackList({
-  title,
-  items,
-  icon,
-  iconColor,
-}: {
-  title: string;
-  items: string[];
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
-}) {
-  if (items.length === 0) return null;
-  return (
-    <View className="gap-2">
-      <Text className="text-lg font-semibold text-zinc-50">{title}</Text>
-      <View className="gap-2 rounded-2xl bg-zinc-900 p-4">
-        {items.map((item) => (
-          <View key={item} className="flex-row items-start gap-2.5">
-            <Ionicons name={icon} size={16} color={iconColor} style={{ marginTop: 2 }} />
-            <Text className="flex-1 text-sm leading-5 text-zinc-300">{item}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
 function EvaluationResult({
   result,
   onReset,
@@ -150,9 +126,27 @@ function EvaluationResult({
   );
 }
 
-// ---- Screen ----
+// ---- Evaluate flow ----
 
-export default function AICoachScreen() {
+function SubmissionError({ error }: { error: Error }) {
+  const isRateLimit = error instanceof ApiError && error.status === 429;
+  return (
+    <View
+      className={`gap-1 rounded-2xl border p-4 ${
+        isRateLimit ? 'border-amber-500/30 bg-amber-500/10' : 'border-rose-500/30 bg-rose-500/10'
+      }`}
+    >
+      <Text className={`font-semibold ${isRateLimit ? 'text-amber-300' : 'text-rose-300'}`}>
+        {isRateLimit ? 'Daily limit reached' : 'Evaluation failed'}
+      </Text>
+      <Text className={`text-sm ${isRateLimit ? 'text-amber-200/80' : 'text-rose-200/80'}`}>
+        {error.message}
+      </Text>
+    </View>
+  );
+}
+
+function EvaluateView() {
   const [images, setImages] = useState<PoseMap>({});
   const { mutate, data, error, isPending, reset } = useEvaluatePhysique();
 
@@ -170,11 +164,6 @@ export default function AICoachScreen() {
   };
 
   const allPosesSet = POSES.every(({ key }) => images[key] !== undefined);
-
-  const handleSubmit = () => {
-    if (!allPosesSet) return;
-    mutate(images as Record<PoseName, PoseImage>);
-  };
 
   const handleReset = () => {
     reset();
@@ -200,14 +189,11 @@ export default function AICoachScreen() {
         <EvaluationResult result={data} onReset={handleReset} />
       ) : (
         <>
-          <View className="gap-1">
-            <Text className="text-2xl font-bold text-zinc-50">AI Physique Coach</Text>
-            <Text className="text-sm leading-5 text-zinc-400">
-              Upload your three mandatory poses and get judged feedback based on
-              Men's Physique standards. Tap a slot to choose a photo; long-press
-              to use the camera.
-            </Text>
-          </View>
+          <Text className="text-sm leading-5 text-zinc-400">
+            Upload your three mandatory poses and get judged feedback based on
+            Men's Physique standards. Tap a slot to choose a photo; long-press
+            to use the camera.
+          </Text>
 
           <View className="flex-row gap-3">
             {POSES.map(({ key, label, hint }) => (
@@ -222,14 +208,10 @@ export default function AICoachScreen() {
             ))}
           </View>
 
-          {error && (
-            <Text className="text-sm text-rose-400">
-              {error instanceof Error ? error.message : 'Evaluation failed. Try again.'}
-            </Text>
-          )}
+          {error && <SubmissionError error={error} />}
 
           <Pressable
-            onPress={handleSubmit}
+            onPress={() => allPosesSet && mutate(images as Record<PoseName, PoseImage>)}
             disabled={!allPosesSet}
             className={`items-center rounded-2xl py-4 ${
               allPosesSet ? 'bg-amber-500 active:bg-amber-600' : 'bg-zinc-800'
@@ -244,5 +226,39 @@ export default function AICoachScreen() {
         </>
       )}
     </ScrollView>
+  );
+}
+
+// ---- Screen: Evaluate | History ----
+
+type Mode = 'evaluate' | 'history';
+
+export default function AICoachScreen() {
+  const [mode, setMode] = useState<Mode>('evaluate');
+
+  return (
+    <View className="flex-1 bg-zinc-950">
+      <View className="flex-row gap-2 p-4 pb-2">
+        {(['evaluate', 'history'] as Mode[]).map((m) => (
+          <Pressable
+            key={m}
+            onPress={() => setMode(m)}
+            className={`flex-1 items-center rounded-xl py-2.5 ${
+              mode === m ? 'bg-zinc-800' : 'bg-zinc-900'
+            }`}
+          >
+            <Text
+              className={`font-semibold capitalize ${
+                mode === m ? 'text-amber-400' : 'text-zinc-500'
+              }`}
+            >
+              {m}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {mode === 'evaluate' ? <EvaluateView /> : <EvaluationHistoryView />}
+    </View>
   );
 }
