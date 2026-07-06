@@ -1,11 +1,17 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/context/AuthContext';
 
 const TAB_BAR_BG = '#09090b'; // zinc-950
 const ACTIVE = '#f59e0b'; // amber-500
 const INACTIVE = '#71717a'; // zinc-500
 
 export default function ClientTabLayout() {
+  const { user } = useAuth();
+
+  if (!user) return <Redirect href="/(auth)/login" />;
+  if (user.role !== 'client') return <Redirect href="/(coach)" />;
+
   return (
     <Tabs
       screenOptions={{

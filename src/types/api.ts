@@ -108,3 +108,15 @@ export interface ProgressionResponse {
 export interface CreatedResponse {
   id: number; // SQLite autoincrement primary key
 }
+
+// ---- Auth ----
+
+export interface LoginResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    display_name: string;
+    role: 'coach' | 'client';
+  };
+}

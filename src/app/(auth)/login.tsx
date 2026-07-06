@@ -1,18 +1,27 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
-import type { UserRole } from '@/types/models';
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, isLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSignIn = async (role: UserRole) => {
-    if (!email.trim()) return;
-    await signIn(email.trim(), role);
-    router.replace('/');
+  const handleSignIn = async () => {
+    if (!email.trim() || !password) {
+      setError('Enter your email and password.');
+      return;
+    }
+    setError(null);
+    try {
+      await signIn(email, password);
+      router.replace('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign-in failed. Try again.');
+    }
   };
 
   return (
@@ -24,32 +33,45 @@ export default function LoginScreen() {
         </Text>
       </View>
 
-      <TextInput
-        className="rounded-xl bg-zinc-800 px-4 py-3.5 text-lg text-zinc-50"
-        value={email}
-        onChangeText={setEmail}
-        placeholder="you@example.com"
-        placeholderTextColor="#52525b"
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-      />
-
-      {/* Stub role picker — replaced by real auth in Stage 3 */}
       <View className="gap-3">
-        <Pressable
-          onPress={() => handleSignIn('client')}
-          className="items-center rounded-2xl bg-amber-500 py-4 active:bg-amber-600"
-        >
-          <Text className="text-lg font-bold text-zinc-950">Continue as Client</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => handleSignIn('coach')}
-          className="items-center rounded-2xl bg-zinc-800 py-4 active:bg-zinc-700"
-        >
-          <Text className="text-lg font-bold text-zinc-50">Continue as Coach</Text>
-        </Pressable>
+        <TextInput
+          className="rounded-xl bg-zinc-800 px-4 py-3.5 text-lg text-zinc-50"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@example.com"
+          placeholderTextColor="#52525b"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+        />
+        <TextInput
+          className="rounded-xl bg-zinc-800 px-4 py-3.5 text-lg text-zinc-50"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Password"
+          placeholderTextColor="#52525b"
+          secureTextEntry
+          autoComplete="password"
+          onSubmitEditing={handleSignIn}
+        />
       </View>
+
+      {/* Inline error: Alert.alert is a no-op on web */}
+      {error && <Text className="text-sm text-rose-400">{error}</Text>}
+
+      <Pressable
+        onPress={handleSignIn}
+        disabled={isLoading}
+        className={`items-center rounded-2xl py-4 ${
+          isLoading ? 'bg-amber-500/50' : 'bg-amber-500 active:bg-amber-600'
+        }`}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#09090b" />
+        ) : (
+          <Text className="text-lg font-bold text-zinc-950">Sign In</Text>
+        )}
+      </Pressable>
     </View>
   );
 }

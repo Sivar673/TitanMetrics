@@ -9,6 +9,7 @@ import type {
   ClientReportResponse,
   ClientSummaryResponse,
   CreatedResponse,
+  LoginResponse,
   ProgressionResponse,
   WorkoutSessionPayload,
 } from '@/types/api';
@@ -26,6 +27,24 @@ function toClientSummary(res: ClientSummaryResponse): ClientSummary {
     weeklyWeightDeltaLbs: res.weekly_weight_delta_lbs,
     complianceRate: res.compliance_rate,
   };
+}
+
+export async function login(email: string, password: string): Promise<LoginResponse> {
+  if (USE_MOCKS) {
+    await delay();
+    const role = email.toLowerCase().includes('coach') ? 'coach' : 'client';
+    return {
+      token: 'mock-token',
+      user: {
+        id: role === 'coach' ? 'coach_1' : 'c_1',
+        email,
+        display_name: email.split('@')[0],
+        role,
+      },
+    };
+  }
+  const { data } = await api.post<LoginResponse>(ENDPOINTS.login, { email, password });
+  return data;
 }
 
 export async function fetchClients(): Promise<ClientSummary[]> {
