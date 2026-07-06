@@ -1,5 +1,6 @@
 export const ENDPOINTS = {
   login: '/auth/login',
+  me: '/auth/me',
   checkIns: '/check-ins',
   workouts: '/workouts',
   coachClients: '/coach/clients',
