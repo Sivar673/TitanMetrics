@@ -3,9 +3,9 @@ import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Index() {
-  const { user, isLoading } = useAuth();
+  const { user, isRestoring } = useAuth();
 
-  if (isLoading) {
+  if (isRestoring) {
     return (
       <View className="flex-1 items-center justify-center bg-zinc-950">
         <ActivityIndicator color="#f59e0b" />

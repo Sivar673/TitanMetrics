@@ -109,6 +109,30 @@ export interface CreatedResponse {
   id: number; // SQLite autoincrement primary key
 }
 
+// ---- AI Physique Coach ----
+
+export type PoseName = 'front' | 'side' | 'back';
+
+export interface PoseImage {
+  uri: string; // local file/blob URI from expo-image-picker
+  mimeType: string; // e.g. "image/jpeg"
+  fileName: string;
+}
+
+export interface PhysiqueEvaluationResponse {
+  is_valid_submission: boolean;
+  validity_notes: string | null;
+  overall_score: number; // 1-10
+  strengths: string[];
+  weaknesses: string[];
+  training_adjustments: string[];
+}
+
+export interface EvaluationHistoryItem extends PhysiqueEvaluationResponse {
+  id: number;
+  created_at: string; // ISO 8601 UTC
+}
+
 // ---- Auth ----
 
 export interface LoginResponse {

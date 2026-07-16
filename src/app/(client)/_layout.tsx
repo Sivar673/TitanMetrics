@@ -9,9 +9,9 @@ const ACTIVE = '#f59e0b'; // amber-500
 const INACTIVE = '#71717a'; // zinc-500
 
 export default function ClientTabLayout() {
-  const { user, isLoading, signOut } = useAuth();
+  const { user, isRestoring, signOut } = useAuth();
 
-  if (isLoading) return <LoadingState />;
+  if (isRestoring) return <LoadingState />;
   if (!user) return <Redirect href="/(auth)/login" />;
   if (user.role !== 'client') return <Redirect href="/(coach)" />;
 
@@ -54,6 +54,15 @@ export default function ClientTabLayout() {
           title: 'Check-In',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="clipboard" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="ai-coach"
+        options={{
+          title: 'AI Coach',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles" color={color} size={size} />
           ),
         }}
       />

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<!-- Titan Vision demo build: model inference is SIMULATED client-side (3s delay, fixed results). UI/UX demonstration only. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Titan Vision — AI Physique Analysis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scan {
+      0% { top: 0%; opacity: 0; }
+      8% { opacity: 1; }
+      92% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+    @keyframes ringDraw {
+      from { stroke-dashoffset: 264; }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .anim-card { opacity: 0; animation: fadeUp .65s cubic-bezier(.16, 1, .3, 1) forwards; }
+    .scan-line {
+      position: absolute; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+      box-shadow: 0 0 18px 4px rgba(245, 158, 11, .55);
+      animation: scan 1.8s ease-in-out infinite;
+    }
+    .ring-progress { animation: ringDraw 1.4s cubic-bezier(.16, 1, .3, 1) forwards .45s; }
+    .spin { animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-amber-500/30">
+  <div class="mx-auto max-w-3xl px-6 py-12">
+
+    <!-- Header -->
+    <header class="mb-10 flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+            <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+            <circle cx="12" cy="12" r="3.5"/>
+          </svg>
+          <h1 class="text-xl font-bold tracking-tight">TITAN <span class="text-amber-400">VISION</span></h1>
+        </div>
+        <p class="mt-1 text-sm text-zinc-500">AI Physique Analysis · Vision Engine 2.4</p>
+      </div>
+      <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">● Engine online</span>
+    </header>
+
+    <!-- Upload zone -->
+    <section id="upload-section">
+      <div id="dropzone"
+        class="group flex cursor-pointer flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed border-zinc-700 bg-zinc-900/50 px-8 py-20 text-center transition-all duration-300 hover:border-amber-500/60 hover:bg-zinc-900">
+        <svg class="text-zinc-500 transition-colors duration-300 group-hover:text-amber-400" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+          <path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>
+        </svg>
+        <div>
+          <p class="text-lg font-semibold text-zinc-200">Drag &amp; drop a physique photo</p>
+          <p class="mt-1 text-sm text-zinc-500">Front, side, or back pose · JPEG, PNG, or WebP</p>
+        </div>
+        <button id="browse-btn"
+          class="mt-2 rounded-xl bg-amber-500 px-6 py-2.5 font-semibold text-zinc-950 transition-all duration-200 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40">
+          Browse files
+        </button>
+      </div>
+      <input id="file-input" type="file" accept="image/*" class="hidden" />
+    </section>
+
+    <!-- Preview + processing -->
+    <section id="processing-section" class="hidden">
+      <div class="grid gap-6 md:grid-cols-[280px,1fr]">
+        <div class="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+          <img id="preview-img" class="aspect-[3/4] w-full object-cover" alt="Uploaded physique" />
+          <div id="scan-overlay" class="absolute inset-0 hidden bg-zinc-950/30">
+            <div class="scan-line"></div>
+          </div>
+        </div>
+        <div class="flex flex-col items-start justify-center gap-4">
+          <div class="flex items-center gap-3">
+            <!-- Lucide Loader2 -->
+            <svg id="loader" class="spin text-amber-400" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            <p class="text-lg font-semibold text-zinc-100">Titan Vision AI analyzing musculature…</p>
+          </div>
+          <p id="status-line" class="font-mono text-sm text-amber-400/90">Initializing vision pipeline…</p>
+          <div class="h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-zinc-800">
+            <div id="progress-bar" class="h-full w-0 rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500 ease-out"></div>
+          </div>
+          <p class="text-xs text-zinc-600">47 anatomical reference points · bilateral landmark mesh</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results dashboard -->
+    <section id="results-section" class="hidden">
+      <!-- Summary strip -->
+      <div class="anim-card mb-6 flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4" style="animation-delay:.05s">
+        <img id="result-thumb" class="h-16 w-16 rounded-xl border border-zinc-700 object-cover" alt="Analyzed physique" />
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <p class="font-semibold text-zinc-100">Analysis complete</p>
+          </div>
+          <p id="result-meta" class="mt-0.5 text-xs text-zinc-500"></p>
+        </div>
+        <button id="reset-btn" class="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition-colors duration-200 hover:border-amber-500/50 hover:text-amber-400">
+          New analysis
+        </button>
+      </div>
+
+      <!-- Metric cards -->
+      <div class="mb-6 grid gap-4 sm:grid-cols-3">
+        <div class="anim-card rounded-2xl border border-zinc-800 bg-zinc-900 p-5" style="animation-delay:.15s">
+          <div class="flex items-center gap-2 text-zinc-400">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+            </svg>
+            <span class="text-xs font-medium uppercase tracking-wider">Body Fat</span>
+          </div>
+          <p class="mt-3 text-4xl font-bold tracking-tight">12.4<span class="text-xl text-zinc-500">%</span></p>
+          <p class="mt-2 text-xs text-zinc-500">±0.8% · DEXA-correlated estimate</p>
+        </div>
+
+        <div class="anim-card rounded-2xl border border-zinc-800 bg-zinc-900 p-5" style="animation-delay:.25s">
+          <div class="flex items-center gap-2 text-zinc-400">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 2v20"/>
+            </svg>
+            <span class="text-xs font-medium uppercase tracking-wider">Symmetry</span>
+          </div>
+          <div class="mt-3 flex items-center gap-3">
+            <svg width="64" height="64" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="42" fill="none" stroke="#27272a" stroke-width="8"/>
+              <circle class="ring-progress" cx="48" cy="48" r="42" fill="none" stroke="#f59e0b" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="21.1" transform="rotate(-90 48 48)"/>
+            </svg>
+            <div>
+              <p class="text-3xl font-bold tracking-tight">92<span class="text-lg text-zinc-500">/100</span></p>
+              <p class="text-xs text-zinc-500">bilateral balance</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="anim-card rounded-2xl border border-zinc-800 bg-zinc-900 p-5" style="animation-delay:.35s">
+          <div class="flex items-center gap-2 text-zinc-400">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            <span class="text-xs font-medium uppercase tracking-wider">Predictive Strength</span>
+          </div>
+          <p class="mt-3 text-4xl font-bold tracking-tight">315<span class="text-xl text-zinc-500"> lbs</span></p>
+          <p class="mt-2 text-xs text-zinc-500">Est. bench press 1RM · 89% confidence</p>
+        </div>
+      </div>
+
+      <!-- Nutritional protocol -->
+      <div class="anim-card mb-6 rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-500/10 to-zinc-900 p-6" style="animation-delay:.45s">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-amber-300">Nutritional Protocol</h2>
+          <span class="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400">Cutting phase</span>
+        </div>
+        <p class="mt-3 text-zinc-300">
+          Composition profile supports an <strong class="text-zinc-100">immediate transition to a cutting phase</strong>.
+          Target <strong class="text-zinc-100">2,000 kcal/day</strong> to preserve lean mass while driving the taper toward stage condition.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <span class="rounded-lg bg-zinc-800/80 px-3 py-1.5 text-sm"><span class="text-zinc-500">Protein</span> <strong>220g</strong></span>
+          <span class="rounded-lg bg-zinc-800/80 px-3 py-1.5 text-sm"><span class="text-zinc-500">Carbs</span> <strong>150g</strong></span>
+          <span class="rounded-lg bg-zinc-800/80 px-3 py-1.5 text-sm"><span class="text-zinc-500">Fat</span> <strong>55g</strong></span>
+          <span class="rounded-lg bg-zinc-800/80 px-3 py-1.5 text-sm"><span class="text-zinc-500">Deficit</span> <strong>~500 kcal</strong></span>
+        </div>
+      </div>
+
+      <!-- Assessment notes -->
+      <div class="anim-card rounded-2xl border border-zinc-800 bg-zinc-900 p-6" style="animation-delay:.55s">
+        <div class="flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+          </svg>
+          <h2 class="font-semibold text-zinc-100">AI Assessment Notes</h2>
+        </div>
+        <p class="mt-3 leading-relaxed text-zinc-300">
+          Upper chest development is the standout attribute of this physique: clavicular pectoral fullness creates a
+          pronounced shelf that holds shape through the transition into the front pose, and it anchors an already
+          competitive front silhouette. The primary opportunity is <strong class="text-zinc-100">lateral deltoid
+          emphasis</strong> — current side-delt mass trails what this frame's clavicle width can support, and building
+          it out would materially widen the shoulder line and sharpen the V-taper. Recommend prioritizing lateral raise
+          volume (+3–4 weekly sets, cable and dumbbell variants) at the front of pressing sessions over the next
+          mesocycle, then reassessing symmetry under identical lighting.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const browseBtn = document.getElementById('browse-btn');
+    const fileInput = document.getElementById('file-input');
+    const uploadSection = document.getElementById('upload-section');
+    const processingSection = document.getElementById('processing-section');
+    const resultsSection = document.getElementById('results-section');
+    const previewImg = document.getElementById('preview-img');
+    const scanOverlay = document.getElementById('scan-overlay');
+    const statusLine = document.getElementById('status-line');
+    const progressBar = document.getElementById('progress-bar');
+    const resultThumb = document.getElementById('result-thumb');
+    const resultMeta = document.getElementById('result-meta');
+    const resetBtn = document.getElementById('reset-btn');
+
+    const STATUS_STEPS = [
+      'Detecting anatomical landmarks…',
+      'Measuring bilateral symmetry…',
+      'Estimating body composition…',
+      'Compiling strength projections…',
+    ];
+
+    let statusTimer = null;
+    let objectUrl = null;
+
+    // --- Drag & drop wiring ---
+    ['dragenter', 'dragover'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('border-amber-500', 'bg-zinc-900');
+      })
+    );
+    ['dragleave', 'drop'].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-amber-500', 'bg-zinc-900');
+      })
+    );
+    dropzone.addEventListener('drop', (e) => {
+      const file = e.dataTransfer?.files?.[0];
+      if (file) handleFile(file);
+    });
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files?.[0]) handleFile(fileInput.files[0]);
+    });
+
+    // --- Flow: select → preview → simulated inference → results ---
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(file);
+      previewImg.src = objectUrl;
+      resultThumb.src = objectUrl;
+
+      // Processing state kicks in immediately on selection
+      browseBtn.disabled = true;
+      uploadSection.classList.add('hidden');
+      resultsSection.classList.add('hidden');
+      processingSection.classList.remove('hidden');
+      scanOverlay.classList.remove('hidden');
+
+      let step = 0;
+      statusLine.textContent = STATUS_STEPS[step];
+      progressBar.style.width = '12%';
+      statusTimer = setInterval(() => {
+        step += 1;
+        if (step < STATUS_STEPS.length) {
+          statusLine.textContent = STATUS_STEPS[step];
+          progressBar.style.width = `${12 + step * 26}%`;
+        }
+      }, 720);
+
+      // Simulated network latency + model inference
+      setTimeout(showResults, 3000);
+    }
+
+    function showResults() {
+      clearInterval(statusTimer);
+      progressBar.style.width = '100%';
+      processingSection.classList.add('hidden');
+      scanOverlay.classList.add('hidden');
+
+      resultMeta.textContent =
+        `Processed ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ` +
+        'Vision Engine 2.4 · 47 landmarks resolved';
+
+      // Restart entrance animations on every run
+      resultsSection.querySelectorAll('.anim-card').forEach((card) => {
+        card.style.animation = 'none';
+        void card.offsetHeight; // reflow
+        card.style.animation = '';
+      });
+      resultsSection.classList.remove('hidden');
+    }
+
+    resetBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      browseBtn.disabled = false;
+      resultsSection.classList.add('hidden');
+      processingSection.classList.add('hidden');
+      uploadSection.classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

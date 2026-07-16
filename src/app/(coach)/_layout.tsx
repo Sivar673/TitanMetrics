@@ -5,9 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 import { LoadingState } from '@/components/ui/QueryStates';
 
 export default function CoachStackLayout() {
-  const { user, isLoading, signOut } = useAuth();
+  const { user, isRestoring, signOut } = useAuth();
 
-  if (isLoading) return <LoadingState />;
+  if (isRestoring) return <LoadingState />;
   if (!user) return <Redirect href="/(auth)/login" />;
   if (user.role !== 'coach') return <Redirect href="/(client)/dashboard" />;
 
